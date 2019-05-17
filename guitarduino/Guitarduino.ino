@@ -55,6 +55,8 @@ struct Particle {
 InputState state = {0};
 InputState prevState = {0};
 Particle particles[MAX_PARTICLES];
+int particle_cooldown[5]; //so we don't fire off particles every tick
+const int PARTICLE_COOLDOWN = 5; // in ticks, how long between successive particle sends?
 
 void setup() {
   leds.begin();
@@ -101,10 +103,8 @@ void getInput()
       counter = 0;
     }
   }
-  else
-  {
-    delay(1); // simulate the serial.read() delay
-  }
+  delay(1); 
+
   
 }
 
@@ -133,59 +133,40 @@ void updateDrawMemory()
     leds.setPixel(indexTranslation[ledsPerStrip*row + c++], WHITE * (state.whammy_bar > (0xFFFF / 16 * c)));
   }
 
-
-// TODO make a cool down for how often each row can have a new particle. Right now it spawns new particles IMMEDIATELY if you hold down too long
+// cooldown timer for each button's particle generation
+  for (int i=0; i<5; i++)
+  {
+    if(particle_cooldown[i] > 0)
+      {
+        particle_cooldown[i]--;
+      }
+  }
+  
   int particleIndex = 0;
   if (state.dpad == 1 || state.dpad == 5) // up or down 
   {
-    if((state.button_mask & (0x1 << 0)) != 0) // first button, green
+    for(int i=0; i<5; i++)
     {
-      particleIndex = findFreeParticle();
-      if(particleIndex < MAX_PARTICLES) 
+      // swap columns 2 and 3
+      int j = i;
+      if (j ==2) 
+      { 
+        j = 3;
+      } else if (j == 3) 
       {
-        particles[particleIndex].active = true;
-        particles[particleIndex].x = 0;
-        particles[particleIndex].y = 0;
+        j = 2;
       }
-    }
-    if((state.button_mask & (0x1 << 1)) != 0) // second button, red
-    {
-      particleIndex = findFreeParticle();
-      if(particleIndex < MAX_PARTICLES) 
+
+      if((state.button_mask & (0x1 << j)) != 0 && particle_cooldown[i] == 0) // first button, green
       {
-        particles[particleIndex].active = true;
-        particles[particleIndex].x = 1;
-        particles[particleIndex].y = 0;
-      }
-    }
-    if((state.button_mask & (0x1 << 3)) != 0) // third button, yellow. Yes indexes 2 and 3 are swapped
-    {
-      particleIndex = findFreeParticle();
-      if(particleIndex < MAX_PARTICLES) 
-      {
-        particles[particleIndex].active = true;
-        particles[particleIndex].x = 2;
-        particles[particleIndex].y = 0;
-      }
-    }
-    if((state.button_mask & (0x1 << 2)) != 0) // fourth button, blue
-    {
-      particleIndex = findFreeParticle();
-      if(particleIndex < MAX_PARTICLES) 
-      {
-        particles[particleIndex].active = true;
-        particles[particleIndex].x = 3;
-        particles[particleIndex].y = 0;
-      }
-    }
-    if((state.button_mask & (0x1 << 4)) != 0) // fifth button, orange
-    {
-      particleIndex = findFreeParticle();
-      if(particleIndex < MAX_PARTICLES) 
-      {
-        particles[particleIndex].active = true;
-        particles[particleIndex].x = 4;
-        particles[particleIndex].y = 0;
+        particleIndex = findFreeParticle();
+        if(particleIndex < MAX_PARTICLES) 
+        {
+          particles[particleIndex].active = true;
+          particles[particleIndex].x = i;
+          particles[particleIndex].y = 0;
+          particle_cooldown[i] = PARTICLE_COOLDOWN;
+        }
       }
     }
   }
@@ -250,4 +231,3 @@ void updateParticles()
   }
   
 }
-
